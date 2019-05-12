@@ -1,0 +1,22 @@
+---
+title: "Prepare data"
+output: html_notebook
+---
+
+Downloaded from Martin Hemberg’s website on 03/10/2019
+```{r}
+yan <- readRDS(url("https://scrnaseq-public-datasets.s3.amazonaws.com/scater-objects/yan.rds"))
+saveRDS(yan, file = "sce_rds_files/yan.Rds")
+```
+
+Downloaded from Martin Hemberg’s website on 03/10/2019
+```{r}
+deng <- readRDS(file = url("https://scrnaseq-public-datasets.s3.amazonaws.com/scater-objects/deng-reads.rds"))
+saveRDS(deng, file = "sce_rds_files/deng.Rds")
+```
+
+Downloaded from Martin Hemberg’s website on 03/11/2019
+```{r}
+goolam <- readRDS(url("https://scrnaseq-public-datasets.s3.amazonaws.com/scater-objects/goolam.rds"))
+saveRDS(goolam, file = "sce_rds_files/goolam.Rds")
+```
