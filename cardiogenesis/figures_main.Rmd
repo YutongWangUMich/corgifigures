@@ -1,5 +1,5 @@
 ---
-title: "Main figure"
+title: "Main figure - cardiogenesis"
 output: html_notebook
 description: cardiogenesis
 ---

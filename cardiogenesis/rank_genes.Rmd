@@ -33,7 +33,7 @@ gene_rankings[["CCA-GL"]] <- names(sort(rowSums(gl^2),decreasing = T))
 ```
 
 ```{r}
-corgi_out <- readRDS(file = "other_rds_files/corgi_out2.Rds")
+corgi_out <- readRDS(file = "other_rds_files/corgi_out.Rds")
 
 
 corgi_score <- corgi_out[,1:3]/corgi_out[,"num.times.sampled"]

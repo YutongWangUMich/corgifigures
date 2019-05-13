@@ -122,6 +122,8 @@ unlink(temp)
 
 We download the gene ranking produced by a supervised feature selection method as in [Dulken et al. 2017](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5269583/)
 
+Downloaded on 05/13/2019
+
 Note:
 
 - The table `consensus_genes` has 101 columns, the first column is metadata
@@ -129,7 +131,7 @@ Note:
 - Each column is the top 100 genes produced by one computed model.
 - A gene that shows up in multiple columns means that there is a _consensus_ across multiple models that the gene should be ranked in the top 100, hence the name.
 
-```{r, eval = F}
+```{r}
 library("openxlsx")
 library(dplyr)
 consensus_genes <- 
