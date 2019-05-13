@@ -1,0 +1,64 @@
+---
+title: "Prepare gene sets - embryogenesis"
+output: html_notebook
+---
+
+
+```{r}
+library(corgi)
+gene_rankings <- readRDS(file = "other_rds_files/gene_rankings.Rds")
+
+n_genes <- 100
+
+gene_sets <- get_compared_gene_sets(
+  batch1_top_genes = gene_rankings[["HDG(Yan)"]],
+  batch1_name = "HDG(Yan)",
+  batch2_top_genes = gene_rankings[["HDG(Deng)"]],
+  batch2_name = "HDG(Deng)",
+  desired_size = n_genes
+)
+```
+
+
+```{r}
+gene_sets[["CCA-GL"]] <- head(gene_rankings[["CCA-GL"]], n_genes)
+gene_sets[["CORGI"]] <- head(gene_rankings[["CORGI"]], n_genes)
+
+lapply(gene_sets,length)
+
+```
+
+
+```{r}
+saveRDS(gene_sets, file = "other_rds_files/gene_sets.Rds")
+```
+
+
+Prepare also a slightly larger gene set
+
+
+```{r}
+n_genes <- 500
+
+gene_sets <- get_compared_gene_sets(
+  batch1_top_genes = gene_rankings[["HDG(Yan)"]],
+  batch1_name = "HDG(Yan)",
+  batch2_top_genes = gene_rankings[["HDG(Deng)"]],
+  batch2_name = "HDG(Deng)",
+  desired_size = n_genes
+)
+```
+
+
+```{r}
+gene_sets[["CCA-GL"]] <- head(gene_rankings[["CCA-GL"]], n_genes)
+gene_sets[["CORGI"]] <- head(gene_rankings[["CORGI"]], n_genes)
+
+lapply(gene_sets,length)
+```
+
+
+```{r}
+saveRDS(gene_sets, file = "other_rds_files/gene_sets500.Rds")
+```
+

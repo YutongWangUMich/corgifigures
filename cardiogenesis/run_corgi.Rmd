@@ -1,0 +1,31 @@
+---
+title: "Run CORGI on cardiogenesis"
+output: html_notebook
+---
+
+```{r}
+run_time = 2*60*60
+```
+
+# Cardiogenesis
+
+```{r}
+lescroart <- readRDS(file = "sce_rds_files/lescroart.Rds")
+
+lescroart <- lescroart[(rowMeans(counts(lescroart)==0)<0.95), ] 
+
+lescroart <- lescroart[ , (colMeans(counts(lescroart)==0)<0.95)]
+table(lescroart$Study)
+lesc <- lescroart[ , lescroart$Study != "wj"]
+scia <- lescroart[ , lescroart$Study == "wj"]
+
+set.seed(1)
+corgi::corgi(
+  counts(lesc),
+  counts(scia),
+  run_time = run_time
+  ) -> corgi_out
+
+saveRDS(corgi_out, file = "other_rds_files/corgi_out.Rds")
+
+```

@@ -1,0 +1,37 @@
+---
+title: "Run CORGI - embryogenesis"
+output: html_notebook
+---
+
+```{r}
+#run_time = 2*60*60
+run_time = 2*1*60
+```
+
+# Embryogenesis
+
+```{r}
+yan <- readRDS(file = "sce_rds_files/yan.Rds")
+deng <- readRDS(file = "sce_rds_files/deng.Rds")
+
+rownames(yan) <- toupper(rownames(yan))
+rownames(deng) <- toupper(rownames(deng))
+shared_genes <- intersect(rownames(yan), rownames(deng))
+
+# Get rid of the spike-in genes
+
+shared_genes <- shared_genes[-grep("ERCC", shared_genes)]
+yan <- yan[shared_genes, ]
+deng <- deng[shared_genes, ]
+
+for(i in 1:3){
+set.seed(i)
+corgi::corgi(
+  normcounts(yan),
+  counts(deng),
+  run_time = run_time
+) -> corgi_out
+
+saveRDS(corgi_out, file = paste0("other_rds_files/corgi_out", i,".Rds"))
+}
+```

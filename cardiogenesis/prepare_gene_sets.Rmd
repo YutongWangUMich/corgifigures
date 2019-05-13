@@ -1,0 +1,29 @@
+---
+title: "Prepare gene sets"
+output: html_notebook
+description: cardiogenesis
+---
+
+```{r}
+library(corgi)
+gene_rankings <- readRDS(file = "other_rds_files/gene_rankings.Rds")
+# names(gene_rankings)
+n_genes <- 100
+
+gene_sets <- get_compared_gene_sets(
+  batch1_top_genes = gene_rankings[["HDG(Lescroart)"]],
+  batch1_name = "HDG(Lescroart)",
+  batch2_top_genes = gene_rankings[["HDG(Scialdone)"]],
+  batch2_name = "HDG(Scialdone)",
+  desired_size = n_genes
+)
+
+```
+
+```{r}
+gene_sets[["CCA-GL"]] <- head(gene_rankings[["CCA-GL"]], n_genes)
+gene_sets[["CORGI"]] <- head(gene_rankings[["CORGI"]], n_genes)
+
+lapply(gene_sets,length)
+saveRDS(gene_sets, file = "other_rds_files/gene_sets.Rds")
+```

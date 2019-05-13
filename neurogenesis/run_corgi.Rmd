@@ -1,0 +1,36 @@
+---
+title: "Run CORGI on neurogenesis"
+output: html_notebook
+---
+
+
+
+```{r}
+run_time = 2*60*60
+```
+
+# Neurogenesis
+
+```{r}
+dulken <- readRDS(file = "sce_rds_files/dulken.Rds")
+llorens <- readRDS(file = "sce_rds_files/llorens.Rds")
+
+shared_genes <- intersect(rownames(dulken),rownames(llorens))
+length(shared_genes)
+dulken <- dulken[shared_genes,]
+llorens <- llorens[shared_genes,]
+
+top_consensus_genes <- readRDS(file ="other_rds_files/consensus_genes.rds")
+
+consensus34 <- names(which(top_consensus_genes>50))
+
+set.seed(1)
+corgi::corgi(
+  counts(dulken),
+  counts(llorens),
+  run_time = run_time,
+  must_have_genes = consensus34
+) -> corgi_out
+saveRDS(corgi_out, file = "other_rds_files/corgi_out.Rds")
+
+```

@@ -1,0 +1,41 @@
+---
+title: "Rank genes - neurogenesis"
+output: html_notebook
+description: Compute ranked list of genes for the neurogenesis datasets
+---
+
+
+```{r}
+dulken <- readRDS(file = "sce_rds_files/dulken.Rds")
+llorens <- readRDS(file = "sce_rds_files/llorens.Rds")
+
+shared_genes <- intersect(rownames(dulken),rownames(llorens))
+length(shared_genes)
+dulken <- dulken[shared_genes,]
+llorens <- llorens[shared_genes,]
+
+out <- scran::multiBatchNorm(dulken,llorens) # the output has logcounts
+dulken <- out[[1]]
+llorens <- out[[2]]
+
+
+library(corgi)
+gene_rankings <- list()
+
+gene_rankings[["HDG(Dulken)"]] <- HDG_ranking(dulken)
+gene_rankings[["HDG(Llorens)"]] <- HDG_ranking(llorens)
+
+gl <- Seurat_CCA_GeneLoading(counts(dulken),
+                             counts(llorens))
+
+
+gene_rankings[["CCA-GL"]] <- names(sort(rowSums(gl^2),decreasing = T))
+
+
+corgi_out <- readRDS(file = "other_rds_files/corgi_out.Rds")
+corgi_score <- corgi_out[,1:3]/corgi_out[,"num.times.sampled"]
+gene_rankings[["CORGI"]] <- names(sort(corgi_score[,"principal_curve"]))
+
+saveRDS(gene_rankings, file = "other_rds_files/gene_rankings.Rds")
+```
+

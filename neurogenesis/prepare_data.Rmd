@@ -1,0 +1,162 @@
+---
+title: "Prepare data - neurogenesis"
+output: html_notebook
+---
+
+# Download Llorens-Bobadilla 2015 dataset
+
+The data is downloaded on on 03/01/2019.
+
+Load data from [Dulken et al. 2017](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5269583/)
+
+This code is obtained from the [GitHub code for Figure 6B in Dulken et al 2017](https://github.com/bdulken/SVZ_NSC_Dulken_2/blob/master/Figure6_FigureS6/Llorens%20Projections%20_%20Figure%206B%2C%20S6A%2C%20S6B.R)
+
+```{r}
+Llorens_allcounts<-read.table(url("https://github.com/bdulken/SVZ_NSC_Dulken_2/raw/master/Files/Llorens_counts_allgenes.txt"))
+
+allcounts_allcells<-Llorens_allcounts
+
+#Remove neuroblasts from Llorenss data
+#allcounts_allcells_notaps<-allcounts_allcells[!grepl("tap",colnames(allcounts_allcells))]
+allcounts_allcells_noblasts<-allcounts_allcells[!grepl("PSA",colnames(allcounts_allcells))]
+
+#Remove oligodendrocytes from Llorenss data
+oligos<-as.vector(read.table(url("https://raw.githubusercontent.com/bdulken/SVZ_NSC_Dulken_2/master/Files/comp_oligos.txt"))[,1])
+allcounts_allcells_noblasts_nooligo<-allcounts_allcells_noblasts[,-na.omit(match(oligos,colnames(allcounts_allcells_noblasts)))]
+allcounts_allcells_noblasts_nooligo_noERCC<-allcounts_allcells_noblasts_nooligo[!grepl("ERCC-",rownames(allcounts_allcells_noblasts_nooligo)),]
+
+llorens <- allcounts_allcells_noblasts_nooligo_noERCC
+
+llorens_cell_type <-  factor(
+  unlist(
+    lapply(X = colnames(llorens),
+           FUN = function(x){substr(x,1,1)})
+    )
+  )
+
+llorens_cell_type <- plyr::mapvalues(x = llorens_cell_type,
+                                     from = c("N","t"),
+                                     to = c("NSC","NPC"))
+
+llorens <- SingleCellExperiment(assay = list(counts = as.matrix(llorens)))
+llorens$cell_type1 <- llorens_cell_type
+
+saveRDS(llorens, file = "sce_rds_files/llorens.Rds")
+```
+
+
+
+
+
+# Download Dulken 2017 dataset
+
+The data is downloaded on on 03/04/2019.
+
+
+
+This code is obtained from the [GitHub code for Figure 1 in Dulken et al 2017](https://github.com/bdulken/SVZ_NSC_Dulken_2/blob/master/Figure1/PCA%20-%20Outliers%20Removed%20_%20Figure%201C.R). The difference between our code and theirs is that we don't filter out cell-cycle genes.
+
+
+```{r}
+#Loading all high quality cells and filtering for lowly expressed genes
+spec_pops<-read.table(url("https://raw.githubusercontent.com/bdulken/SVZ_NSC_Dulken_2/master/Files/AllCounts_specPops_read_gene_ERCC_filt_FINAL.txt"))
+
+allcounts_allcells<-spec_pops
+
+#Removing Oligodendrocytes and Outliers
+oligos<-as.vector(read.table(url("https://raw.githubusercontent.com/bdulken/SVZ_NSC_Dulken_2/master/Files/STAR_oligos_updated_09232015.txt"))[,1])
+allcounts_allcells_nooligo<-allcounts_allcells[,-na.omit(match(oligos,colnames(allcounts_allcells)))]
+
+#Filtering for expressed by 5 cells at 10 counts
+greaterthan0<-allcounts_allcells_nooligo>10
+greaterthan0sum<-rowSums(greaterthan0)
+allcounts_allcells_nooligo_genefilt<-allcounts_allcells_nooligo[greaterthan0sum>=5,]
+dulken <- allcounts_allcells_nooligo_genefilt
+
+# Overview of the Dulken dataset
+dulken_cell_type <- 
+  factor(
+    unlist(
+      lapply(X=colnames(dulken),
+             FUN=function(x){strsplit(x,split = "_", fixed=T)[[1]][1]})
+      )
+    )
+
+# TAP stands for transient amplifying cells, which is equivalent to neural progenitor cells here
+dulken_cell_type <- plyr::mapvalues(x = dulken_cell_type,
+                              from = c("aNSC", "Ast", "NPC", "qNSC", "NSC", "TAP"),
+                              to = c("NSC","Ast","NPC","NSC","NSC","NPC"))
+
+library(SingleCellExperiment)
+
+dulken <- SingleCellExperiment(assay = list(counts = as.matrix(dulken)))
+dulken$cell_type1 <- dulken_cell_type
+saveRDS(dulken, file = "sce_rds_files/dulken.Rds")
+```
+
+
+
+
+# Download Dulken 2017 consensus genes
+
+```{r}
+library(openxlsx)
+
+temp <- tempfile()
+download.file("https://www.cell.com/cms/10.1016/j.celrep.2016.12.060/attachment/ba11d4f6-39dc-4029-a0a3-73581739daf1/mmc9.xlsx",temp)
+
+sheet_names <- openxlsx::getSheetNames(temp)
+
+lapply(sheet_names,
+       function(sheet_name){
+         read.xlsx(temp, sheet = sheet_name,startRow = 3, rowNames = T)
+       }) -> 
+  table_S8
+
+names(table_S8) <- sheet_names
+saveRDS(table_S8, file = "other_rds_files/table_S8.Rds")
+
+unlink(temp)
+```
+
+
+We download the gene ranking produced by a supervised feature selection method as in [Dulken et al. 2017](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5269583/)
+
+Note:
+
+- The table `consensus_genes` has 101 columns, the first column is metadata
+- The remainder columns are gene rankings computed by Dulken et al.
+- Each column is the top 100 genes produced by one computed model.
+- A gene that shows up in multiple columns means that there is a _consensus_ across multiple models that the gene should be ranked in the top 100, hence the name.
+
+```{r, eval = F}
+library("openxlsx")
+library(dplyr)
+consensus_genes <- 
+  read.xlsx("https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5269583/bin/NIHMS839312-supplement-7.xlsx")
+consensus_genes <- consensus_genes[,-c(1)] # remove the first column, which is metadata
+
+
+all_consensus_genes <- Reduce(union, consensus_genes)
+
+all_consensus_genes %>%
+  sapply(function(g){
+    # count up how many models does g show up in
+    consensus_genes %>%
+      sapply(function(model) {
+        g %in% model
+      }) %>%
+      sum
+  }) %>% 
+  sort(decreasing = T) -> # top of the list are genes that show up the most and vice versa
+  consensus_genes
+```
+
+```{r}
+dulken <- readRDS(file = "sce_rds_files/dulken.Rds")
+llorens <- readRDS(file = "sce_rds_files/llorens.Rds")
+shared_genes <- intersect(rownames(dulken), rownames(llorens))
+consensus_genes <- consensus_genes[names(consensus_genes) %in% shared_genes]
+
+saveRDS(consensus_genes, file = "other_rds_files/consensus_genes.Rds")
+```

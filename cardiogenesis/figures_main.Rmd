@@ -1,0 +1,93 @@
+---
+title: "Main figure"
+output: html_notebook
+description: cardiogenesis
+---
+
+```{r}
+library(SingleCellExperiment)
+library(corgi)
+
+lescroart <- readRDS(file = "sce_rds_files/lescroart.Rds")
+
+lescroart <- lescroart[(rowMeans(counts(lescroart)==0)<0.95), ] 
+
+lescroart <- lescroart[ , (colMeans(counts(lescroart)==0)<0.95)]
+table(lescroart$Study)
+lesc <- lescroart[ , lescroart$Study != "wj"]
+scia <- lescroart[ , lescroart$Study == "wj"]
+
+gene_sets <- readRDS(file = "other_rds_files/gene_sets.Rds")
+
+```
+
+
+
+
+
+
+
+```{r}
+shape_palette <- c(1,16,2)
+color_palette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#000000")
+qplot <- function(...){
+  ggplot2::qplot(...) +
+    scale_shape_manual(values = shape_palette) +
+    scale_color_manual(values = color_palette)
+}
+
+
+library(cowplot)
+combined <- combine_sces(list(Lescroart = lesc, Scialdone = scia), cell_type_use = "Stage", levels = c("E6.5","E6.75", "E7.25", "E7.5"))
+get_embeddings <- function(gene_sets)
+  lapply(
+    X = gene_sets,
+    FUN = function(gene_set) {
+      return(spearman_rho_mds(counts(combined)[gene_set, ]))
+    }
+  )
+
+
+emb_name <- "MDS"
+
+get_top_panel <- function(embeddings){
+  get_scatterplots(embeddings,
+                   as.factor(combined$batch),
+                   combined$cell_type) -> dr_plots
+  
+  plot_grid(
+    get_axes_legend(emb_name),
+    get_shape_legend(combined$batch, shape_palette),
+    get_color_legend(combined$cell_type, color_palette, ncol = 1),
+    ncol = 1,
+    rel_heights = c(1,1,2)
+  ) -> legends
+  
+  # dr_plots[[length(dr_plots) + 1]] <- legends
+  
+  dr_plots[["nrow"]] <- 2
+  
+  dr_plots[["labels"]] <- c(LETTERS[1:6], "")
+  
+  do.call(plot_grid, dr_plots) -> top_panel
+  plot_grid(top_panel, legends, nrow=1, rel_widths = c(4,1))
+}
+
+get_top_panel(get_embeddings(gene_sets[
+  c("CORGI",
+    "HDG(Lescroart)",
+    "HDG(Scialdone)",
+    "CCA-GL",
+    "Union",
+    "Intersection")])) -> cardiogenesis_MDS_HDG
+
+ggsave(filename = "cardiogenesis_MDS_HDG.eps",
+       device = "eps", 
+       plot = cardiogenesis_MDS_HDG,path = "figures", 
+       width = 8,
+       height = 4.5)
+
+
+# get_embeddings
+
+```

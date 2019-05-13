@@ -1,0 +1,52 @@
+---
+title: "Rank genes - embryogenesis"
+output: html_notebook
+---
+
+```{r}
+deng <- readRDS(file = "sce_rds_files/deng.Rds")
+
+yan <- readRDS(file = "sce_rds_files/yan.Rds")
+
+rownames(yan) <- toupper(rownames(yan))
+rownames(deng) <- toupper(rownames(deng))
+shared_genes <- intersect(rownames(yan), rownames(deng))
+
+
+shared_genes <- shared_genes[-grep("ERCC", shared_genes)]
+
+yan <- yan[shared_genes, ]
+deng <- deng[shared_genes, ]
+
+
+library(corgi)
+gene_rankings <- list()
+```
+
+
+```{r}
+gene_rankings[["HDG(Yan)"]] <- HDG_ranking(yan, do_normalize = F)
+```
+
+```{r}
+gene_rankings[["HDG(Deng)"]] <- HDG_ranking(deng, do_normalize = F)
+```
+
+
+```{r}
+gl <- Seurat_CCA_GeneLoading(normcounts(yan),
+                             counts(deng))
+
+```
+
+
+```{r}
+gene_rankings[["CCA-GL"]] <- names(sort(rowSums(gl^2),decreasing = T))
+
+corgi_out <- readRDS(file = "other_rds_files/corgi_out1.Rds")
+corgi_score <- corgi_out[,1:3]/corgi_out[,"num.times.sampled"]
+gene_rankings[["CORGI"]] <- names(sort(corgi_score[,"principal_curve"]))
+
+saveRDS(gene_rankings, file = "other_rds_files/gene_rankings.Rds")
+```
+

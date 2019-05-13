@@ -1,0 +1,37 @@
+---
+title: "Table of gene sets compared - neurogenesis"
+output: html_notebook
+---
+
+```{r}
+
+gene_sets <- readRDS(file = "other_rds_files/gene_sets.Rds")
+gene_sets[c("CORGI",
+    "HDG(Dulken)",
+    "HDG(Llorens)",
+    "CCA-GL",
+    "Union",
+    "Intersection")] -> gene_sets
+
+consensus34 <- readRDS(file = "other_rds_files/consensus34.Rds")
+
+gene_sets %>% lapply(function(x){
+  x %>% lapply(function(y){
+    if(y %in% consensus34){
+      y <- paste0("{\\color{red}",y,"}")
+    }
+    return(y)
+  })
+}) -> gene_sets
+library(dplyr)
+gene_sets %>%
+  lapply(function(x) paste0(x, collapse = " ")) %>%
+  lapply(function(x) paste0("\\texttt{", x, "}")) -> gene_sets
+         
+lapply(seq_along(gene_sets), function(i) paste0("\\noindent\\textbf{",names(gene_sets)[i], "}\n\n\\noindent", gene_sets[[i]])) -> output
+
+
+paste0(output, collapse = "\n\n")->output
+
+cat(output,file = "tex_files/neurogenesis_gene_sets.tex")
+```

@@ -1,0 +1,70 @@
+---
+title: "Prepare data"
+output: html_notebook
+---
+
+
+[Defining the earliest step of cardiovascular lineage segregation by single-cell RNA-seq.
+](https://www.ncbi.nlm.nih.gov/pubmed/29371425)
+
+
+Data downloaded on 03/10/2019 from
+[paper website](http://singlecell.stemcells.cam.ac.uk/mesp1#data)
+
+
+
+```{r, eval = F}
+temp <- tempfile()
+download.file("http://singlecell.stemcells.cam.ac.uk/data/HTSeq_counts_genesonly_combined.txt",temp)
+count_matrix <- read.delim(temp, row.names = 1, header = T)
+unlink(temp)
+
+# Download the meta data
+metadata <- read.csv(url("http://singlecell.stemcells.cam.ac.uk/data/metadata_combined.txt"), sep="",row.names = 1)
+
+stopifnot(all(
+  unlist(lapply(X = colnames(counts),FUN = function(x) gsub('[[:punct:] ]+','',x))) == 
+    unlist(lapply(X = rownames(metadata),FUN = function(x) gsub('[[:punct:] ]+','',x)))
+))
+
+colnames(count_matrix) <- rownames(metadata)
+
+md <- metadata[metadata$Study!= "wj",]
+md$Stage <- unlist(lapply(X = rownames(md),FUN = function(x) strsplit(x,split = "_",fixed = T)[[1]][1]))
+metadata[metadata$Study!= "wj",] <- md
+
+library(SingleCellExperiment)
+
+lescroart <- SingleCellExperiment(assay = list(counts = as.matrix(count_matrix)), colData = metadata)
+
+dim(lescroart)
+# remove rows where no genes are expressed
+lescroart <- lescroart[rowSums(counts(lescroart))!=0, ]
+
+dim(lescroart)
+
+
+features <- rownames(lescroart)
+library(biomaRt)
+
+mart <- useMart("ensembl", 
+                dataset = "mmusculus_gene_ensembl", 
+                host="www.ensembl.org" )
+
+out <- getBM(attributes = c("ensembl_gene_id", "mgi_symbol"), 
+             values = features, 
+             mart = mart,
+             filters = "ensembl_gene_id")
+
+all(out$ensembl_gene_id %in% features)
+
+rowData(lescroart)$mgi_symbol <- NA
+
+rowData(lescroart)$mgi_symbol[which(features %in% out$ensembl_gene_id)] <- out$mgi_symbol
+
+
+rowData(lescroart)$ensembl_gene_id <- NA
+rowData(lescroart)$ensembl_gene_id[which(features %in% out$ensembl_gene_id)] <- out$ensembl_gene_id
+
+saveRDS(lescroart, file = "sce_rds_files/lescroart.Rds")
+```

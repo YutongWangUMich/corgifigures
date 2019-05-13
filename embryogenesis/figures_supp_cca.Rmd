@@ -1,0 +1,136 @@
+---
+title: "Supplementary figure - CCA - embryogenesis"
+output: html_notebook
+---
+
+```{r}
+library(corgi)
+deng <- readRDS(file = "sce_rds_files/deng.Rds")
+
+yan <- readRDS(file = "sce_rds_files/yan.Rds")
+
+
+rownames(yan) <- toupper(rownames(yan))
+rownames(deng) <- toupper(rownames(deng))
+shared_genes <- intersect(rownames(yan), rownames(deng))
+
+
+gene_sets <- readRDS(file = "other_rds_files/gene_sets.Rds")
+
+
+combined <- 
+  combine_sces(
+    sce_list = list(Yan = yan, Deng = deng),
+    levels = c("zygote", "2cell", "4cell", "8cell", "16cell", "blast")
+  )
+
+library(Seurat)
+```
+
+
+```{r}
+yan_seu <- CreateSeuratObject(raw.data = normcounts(yan))
+yan_seu <- NormalizeData(object = yan_seu)
+
+```
+
+
+
+```{r}
+yan_seu <- ScaleData(object = yan_seu)
+
+```
+
+
+
+```{r}
+deng_seu <- CreateSeuratObject(raw.data = counts(deng))
+deng_seu <- NormalizeData(object = deng_seu)
+
+```
+
+
+
+```{r}
+deng_seu <- ScaleData(object = deng_seu)
+
+```
+
+
+Wrapper around the qplot ggplot2::qplot function with our color scheme
+```{r}
+my_color_palette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+my_shape_palette <- c(16,1, 2)
+library(ggplot2)
+library(cowplot)
+qplot <- function(...){
+  ggplot2::qplot(...) +
+  scale_color_manual(values = my_color_palette) +
+  scale_shape_manual(values = my_shape_palette)
+}
+```
+
+
+
+```{r}
+get_embeddings <- function(gene_sets){
+  lapply(
+      X = gene_sets,
+      FUN = function(gene_set) {
+        genes_use <- intersect(gene_set, rownames(combined))
+        cca_result <- RunCCA(object = yan_seu, object2 = deng_seu, genes.use = genes_use)
+        cca_result@dr$cca@cell.embeddings[,1:2]
+      }
+    )
+}
+
+```
+
+
+
+```{r}
+emb_name <- "CCA"
+
+get_top_panel <- function(embeddings){
+  get_scatterplots(embeddings,
+                   as.factor(combined$batch),
+                   combined$cell_type) -> dr_plots
+  
+  plot_grid(
+    get_axes_legend(emb_name),
+    get_shape_legend(combined$batch, my_shape_palette),
+    get_color_legend(combined$cell_type, my_color_palette, ncol = 1),
+    ncol = 1,
+    rel_heights = c(1,1,2)
+  ) -> legends
+  
+  # dr_plots[[length(dr_plots) + 1]] <- legends
+  
+  dr_plots[["nrow"]] <- 2
+  
+  dr_plots[["labels"]] <- c(LETTERS[1:6], "")
+  
+  do.call(plot_grid, dr_plots) -> top_panel
+  plot_grid(top_panel, legends, nrow=1, rel_widths = c(4,1))
+}
+
+get_top_panel(get_embeddings(gene_sets[
+  c("CORGI",
+    "HDG(Deng)",
+    "HDG(Yan)",
+    "CCA-GL",
+    "Union",
+    "Intersection")])) -> my_plot
+
+```
+
+
+
+```{r}
+ggsave(filename = "embryo_devel_CCA_HDG.eps",
+       device = "eps", 
+       plot = my_plot, path = "figures", 
+       width = 8,
+       height = 4.5)
+```
+

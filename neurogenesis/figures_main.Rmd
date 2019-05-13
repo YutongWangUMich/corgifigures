@@ -1,0 +1,129 @@
+---
+title: "Main figure - neurogenesis"
+output: html_notebook
+---
+
+```{r}
+dulken <- readRDS(file = "sce_rds_files/dulken.Rds")
+llorens <- readRDS(file = "sce_rds_files/llorens.Rds")
+
+shared_genes <- intersect(rownames(dulken),rownames(llorens))
+length(shared_genes)
+dulken <- dulken[shared_genes,]
+llorens <- llorens[shared_genes,]
+out <- scran::multiBatchNorm(dulken,llorens) # the output has logcounts
+dulken <- out[[1]]
+llorens <- out[[2]]
+
+```
+
+```{r}
+library(corgi)
+combined <-
+  combine_sces(
+    sce_list = list(Dulken = dulken[,dulken$cell_type1!="Ast"], Llorens = llorens),
+  )
+gene_sets <- readRDS(file = "other_rds_files/gene_sets.Rds")
+names(gene_sets)
+```
+
+```{r}
+my_shape_palette <- c(1, 16, 2)
+my_color_palette <- c("#E69F00", "#0072B2")
+
+# Wrap around qplot so to use our color settings
+qplot <- function(...){
+  ggplot2::qplot(...) +
+    scale_shape_manual(values = my_shape_palette) +
+    scale_color_manual(values = my_color_palette)
+}
+```
+
+```{r}
+get_embeddings <- function(gene_sets)
+  lapply(
+    X = gene_sets,
+    FUN = function(gene_set) {
+      return(spearman_rho_mds(counts(combined)[gene_set, ]))
+    }
+  )
+```
+
+```{r}
+
+gene_set_ordering <- c("CORGI",
+    "HDG(Llorens)",
+    "HDG(Dulken)",
+    "CCA-GL",
+    "Union",
+    "Intersection",
+    "Cons134")
+```
+
+
+```{r}
+library(dplyr)
+comparison_results <-
+  run_mapping_accuracy_comparison(
+    query = llorens,
+    reference = dulken[,dulken$cell_type1!="Ast"],
+    gene_sets = gene_sets[gene_set_ordering],
+    method_use = "scmapCluster"
+  )
+# plot_mapping_accuracy_comparison(comparison_results)
+plot_mapping_accuracy_comparison(comparison_results) + ylim(c(0,1)) + ggtitle("Reference = Dulken,\nQuery = Llorens-Bobadilla")-> cohen_kappa_plot
+
+
+cohen_kappa_plot <- cohen_kappa_plot + scale_shape_manual(values = c(15:17,0:4))
+
+```
+
+```{r}
+
+library(cowplot)
+lapply(gene_sets, function(x)all(x %in% rownames(counts(combined))))
+
+emb_name <- "MDS"
+get_top_panel <- function(embeddings,cohen_kappa_plot) {
+  ck_legend <- get_legend(cohen_kappa_plot)
+  
+  get_scatterplots(embeddings,
+                   combined$batch,
+                   combined$cell_type) -> dr_plots
+  plot_grid(
+    ck_legend,
+    plot_grid(
+      get_axes_legend(emb_name),
+      get_shape_legend(combined$batch, my_shape_palette),
+      get_color_legend(combined$cell_type, my_color_palette, ncol = 1),
+      ncol = 1,
+      rel_heights = c(1,1,1)
+    ) ,
+    ncol=2
+  )-> legends
+  
+  
+  cohen_kappa_plot <- cohen_kappa_plot + theme(legend.position = "none")
+  dr_plots[[length(dr_plots)+1]]  <- cohen_kappa_plot
+  dr_plots[[length(dr_plots)+1]]  <- legends
+  dr_plots[["nrow"]] <- 3
+  dr_plots[["ncol"]] <- 3
+  
+  dr_plots[["labels"]] <- LETTERS[1:8]
+  
+  do.call(plot_grid, dr_plots) -> top_panel
+  top_panel
+}
+
+
+get_top_panel(get_embeddings(gene_sets[ gene_set_ordering ]),cohen_kappa_plot) -> neurogenesis_MDS
+
+
+ggsave(filename = "neurogenesis_MDS.eps",device = "eps",plot = neurogenesis_MDS,path = "figures",width = 8,height = 8)
+cohen_kappa_plot
+
+gene_sets[["HDG(Llorens)"]][!gene_sets[["HDG(Llorens)"]] %in% rownames(combined)]
+
+
+gene_sets[["HDG(Dulken)"]]
+```

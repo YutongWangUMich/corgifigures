@@ -1,0 +1,57 @@
+---
+title: "Prepare gene sets - neurogenesis"
+output: html_notebook
+---
+
+```{r}
+get_gene_set_with_markers <- function(f,target){
+  i <- 1
+  while(length(f(i)) < target){
+    i <- i+1
+  }
+  f(i)
+}
+library(corgi)
+```
+
+```{r}
+gene_rankings <- readRDS(file = "other_rds_files/gene_rankings.Rds")
+top_consensus_genes <- readRDS(file ="other_rds_files/consensus_genes.rds")
+consensus34 <- names(which(top_consensus_genes>50))
+saveRDS(consensus34, file = "other_rds_files/consensus34.Rds")
+```
+
+```{r}
+n_genes <- 100
+
+corgi_gene_set <- union(head(gene_rankings[["CORGI"]], n_genes),consensus34)
+
+n_genes <- length(corgi_gene_set)
+n_genes
+```
+
+
+```{r}
+
+
+gene_sets <- get_compared_gene_sets(
+  batch1_top_genes = gene_rankings[["HDG(Dulken)"]],
+  batch1_name = "HDG(Dulken)",
+  batch2_top_genes = gene_rankings[["HDG(Llorens)"]],
+  batch2_name = "HDG(Llorens)",
+  desired_size = n_genes,
+  marker_genes = consensus34
+)
+
+
+f <- function(n) union(head(gene_rankings[["CCA-GL"]],n), consensus34)
+gene_sets[["CCA-GL"]] <- 
+  get_gene_set_with_markers(f, n_genes)
+
+gene_sets[["Cons134"]] <- names(head(top_consensus_genes,n_genes))
+gene_sets[["CORGI"]] <- corgi_gene_set
+
+lapply(gene_sets,length)
+saveRDS(gene_sets, file = "other_rds_files/gene_sets.Rds")
+
+```

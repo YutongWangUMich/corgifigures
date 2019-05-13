@@ -1,0 +1,124 @@
+---
+title: "Heatmaps for the cardiogenesis datasets"
+output: html_notebook
+---
+
+
+```{r}
+library(SingleCellExperiment)
+library(corgi)
+
+lescroart <- readRDS(file = "sce_rds_files/lescroart.Rds")
+
+lescroart <- lescroart[(rowMeans(counts(lescroart)==0)<0.95), ] 
+lescroart <- lescroart[ , (colMeans(counts(lescroart)==0)<0.95)]
+table(lescroart$Study)
+lesc <- lescroart[ , lescroart$Study != "wj"]
+scia <- lescroart[ , lescroart$Study == "wj"]
+
+gene_sets <- readRDS(file = "other_rds_files/gene_sets.Rds")
+combined <- combine_sces(list(Lescroart = lesc, Scialdone = scia),cell_type_use = "Stage")
+combined$replicate <- forcats::fct_c(lesc$Study,scia$Study)
+```
+
+```{r}
+library(biomaRt)
+mart <- useMart("ensembl", 
+                dataset = "mmusculus_gene_ensembl", 
+                host="www.ensembl.org" )
+
+out <- getBM(attributes = c("ensembl_gene_id", "mgi_symbol"), 
+             values = Reduce(union,gene_sets), 
+             mart = mart,
+             filters = "ensembl_gene_id")
+head(out)
+
+```
+
+
+```{r}
+get_heatmap <- function(gene_sets, gene_set_name, do.rank = T, file_path) {
+  gene_set <- gene_sets[[gene_set_name]]
+  gene_set <- intersect(rownames(combined),gene_set)
+  emb <- spearman_rho_mds(counts(combined)[gene_set, ])
+  pcurve_out <- princurve::principal_curve(emb)
+  
+  if(do.rank){
+  R <-
+    apply(counts(combined)[gene_set, ],
+          2,
+          rank)
+  }else{
+    R <- log1p(counts(combined)[gene_set, ])
+  }
+  pheatmap::pheatmap(R,show_colnames = F,show_rownames = F) -> pheatmap_result
+
+  col_ann <- data.frame(
+    cell_type = combined$cell_type,
+    batch = combined$batch,
+    replicate = combined$replicate,
+    pseudo_time = pcurve_out$lambda
+  )
+  
+  row_ann <- cbind(
+    data.frame(gene_name=plyr::mapvalues(
+      gene_set, 
+      from = out$ensembl_gene_id,
+      to = out$mgi_symbol,warn_missing = F)
+                 ),
+    data.frame(lapply(gene_sets, function(x) rownames(R) %in% x))
+  )
+  
+  rownames(row_ann) <- rownames(R)
+  # row_ann[["gene_name"]] <- 
+  
+  color_palette <-
+    c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#000000")
+  
+  cell_type_colors <- color_palette[1:4]
+  names(cell_type_colors) <- levels(combined$cell_type)
+  
+  
+  rownames(col_ann) <- colnames(R)
+  
+  batch_colors <- rainbow(length(unique(combined$batch)))
+  names(batch_colors) <- levels(combined$batch)
+  
+  
+  
+  annotation_colors <- list(
+    cell_type = cell_type_colors,
+    replicate = c(B1="#FF0000", B2="#00FF00",wj="#0000FF"),
+    pseudo_time = c("#000000","#FFFFFF")
+  )
+  
+  gene_name_color <- rep("#FFFFFF",length(gene_set))
+  names(gene_name_color) <- row_ann$gene_name
+  annotation_colors[['gene_name']] <- gene_name_color
+  
+  batch_colors <- rainbow(length(unique(combined$batch)))
+  names(batch_colors) <- levels(combined$batch)
+
+  annotation_colors[['batch']] <- batch_colors
+  
+  gene_order <- pheatmap_result$tree_row$order
+  cell_order <- order(col_ann$pseudo_time)
+  
+  metaheatmap::metaheatmap(
+    R[gene_order, cell_order],
+    col_ann[cell_order,],
+    row_ann[gene_order,],
+    annotation_colors,
+    file_path,
+    grid_line_width = 0,
+    file_name = paste0(gene_set_name, ".html")
+  )
+}
+
+for(i in names(gene_sets)){
+  get_heatmap(gene_sets, i, file_path  = "heatmaps/rank/")
+  get_heatmap(gene_sets, i, file_path  = "heatmaps/raw/",do.rank = F)
+}
+
+```
+

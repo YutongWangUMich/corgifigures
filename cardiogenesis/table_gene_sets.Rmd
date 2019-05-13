@@ -1,0 +1,55 @@
+---
+title: "Table of gene sets in the cardiogenesis comparisons"
+output: html_notebook
+---
+
+```{r}
+gene_sets <- readRDS(file = "other_rds_files/gene_sets.Rds")
+gene_sets[c("CORGI",
+    "HDG(Scialdone)",
+    "HDG(Lescroart)",
+    "CCA-GL",
+    "Union",
+    "Intersection")] -> gene_sets
+```
+
+```{r}
+library(biomaRt)
+mart <- useMart("ensembl", 
+                dataset = "mmusculus_gene_ensembl", 
+                host="www.ensembl.org" )
+
+out <- getBM(attributes = c("ensembl_gene_id", "mgi_symbol"), 
+             values = Reduce(union,gene_sets), 
+             mart = mart,
+             filters = "ensembl_gene_id")
+head(out)
+
+```
+
+
+```{r}
+gene_sets %>%
+  lapply(function(x){
+    plyr::mapvalues(
+      x, 
+      from = out$ensembl_gene_id,
+      to = out$mgi_symbol,warn_missing = F)
+  }) -> gene_sets
+```
+
+
+```{r}
+
+library(dplyr)
+gene_sets %>%
+  lapply(function(x) paste0(x, collapse = " ")) %>%
+  lapply(function(x) paste0("\\texttt{", x, "}")) -> gene_sets
+         
+lapply(seq_along(gene_sets), function(i) paste0("\\noindent\\textbf{",names(gene_sets)[i], "}\n\n\\noindent", gene_sets[[i]])) -> output
+
+
+paste0(output, collapse = "\n\n")->output
+
+cat(output,file = "tex_files/cardiogenesis_gene_sets.tex")
+```
