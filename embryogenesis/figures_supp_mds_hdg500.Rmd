@@ -1,6 +1,7 @@
 ---
 title: "Supplementary figure - MDS + HDG - embryogenesis. Same as main figure, but with 500 genes instead of 100 genes."
 output: html_notebook
+description: Figure S4
 ---
 
 ```{r}

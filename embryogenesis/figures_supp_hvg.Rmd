@@ -1,6 +1,7 @@
 ---
 title: "Supplementary figure - HVG - embryogenesis"
 output: html_notebook
+description: Figure S4
 ---
 
 
@@ -64,7 +65,7 @@ get_embeddings <- function(gene_sets){
       }
     )
 }
-emb_name <- "PCA"
+emb_name <- "MDS"
 
 get_top_panel <- function(embeddings){
   get_scatterplots(embeddings,

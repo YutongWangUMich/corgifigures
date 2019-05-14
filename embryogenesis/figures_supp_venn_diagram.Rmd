@@ -1,0 +1,144 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+#' Plot a venn diagram
+#'
+#' Code obtained from
+#' https://scriptsandstatistics.wordpress.com/2018/04/26/how-to-plot-venn-diagrams-using-r-ggplot2-and-ggforce/
+#' @param my_sets a named list of three sets
+plot_venn_diagram <- function(my_sets) {
+  library(ggforce)
+  library(limma)
+  library(dplyr)
+  df.venn <- data.frame(
+    x = c(0, 0.866,-0.866),
+    y = c(1,-0.5,-0.5),
+    labels = names(my_sets)
+  )
+
+  all_genes <- Reduce(union, my_sets)
+  names(my_sets)[1:3]
+  mydata <-
+    data.frame(all_genes %in% my_sets[[1]],
+               all_genes %in% my_sets[[2]],
+               all_genes %in% my_sets[[3]])
+  colnames(mydata) <- names(my_sets)
+
+  vdc <- vennCounts(mydata)
+  class(vdc) <- 'matrix'
+  df.vdc <- as.data.frame(vdc)[-1, ] %>%
+    mutate(
+      x = c(0, 1.2, 0.8,-1.2,-0.8, 0, 0),
+      y = c(1.2,-0.6, 0.5,-0.6, 0.5,-1, 0)
+    )
+
+  df.gene_set_names <-
+    df.vdc[c(1, 2, 4), 4:6]
+  df.gene_set_names
+
+  df.gene_set_names$Name <- rev(names(my_sets))
+  df.gene_set_names$y[1] <- df.gene_set_names$y[1] + 0.5
+  df.gene_set_names$y[2:3] <- df.gene_set_names$y[2:3] - 0.5
+  df.gene_set_names$x[2:3] <- df.gene_set_names$x[2:3] * 1.25
+
+
+  ggplot(df.venn) +
+    geom_circle(
+      aes(
+        x0 = x,
+        y0 = y,
+        r = 1.5,
+        fill = labels
+      ),
+      alpha = .3,
+      size = 1,
+      colour = 'grey'
+    ) +
+    coord_fixed() +
+    theme_void() +
+    theme(legend.position = 'none') +
+    scale_fill_manual(values = c('cornflowerblue', 'firebrick',  'gold')) +
+    scale_colour_manual(values = c('cornflowerblue', 'firebrick', 'gold'),
+                        guide = FALSE) +
+    labs(fill = NULL) +
+    annotate(
+      "text",
+      x = df.vdc$x,
+      y = df.vdc$y,
+      label = df.vdc$Counts,
+      size = 5
+    ) +
+    annotate("text",
+             x = df.gene_set_names$x,
+             y = df.gene_set_names$y,
+             label = df.gene_set_names$Name) ->
+    venn_diagram
+
+  venn_diagram
+}
+
+```
+
+
+
+```{r}
+gene_sets <- list()
+corgi_out <- readRDS(file = "other_rds_files/corgi_out2.Rds")
+corgi_score1 <- corgi_out[,1:3]/corgi_out[,"num.times.sampled"]
+gene_sets[["CORGI1"]] <- names(sort(corgi_score1[,"principal_curve"]))[1:100]
+
+corgi_out <- readRDS(file = "other_rds_files/corgi_out3.Rds")
+corgi_score2 <- corgi_out[,1:3]/corgi_out[,"num.times.sampled"]
+gene_sets[["CORGI2"]] <- names(sort(corgi_score2[,"principal_curve"]))[1:100]
+
+corgi_out <- readRDS(file = "other_rds_files/corgi_out4.Rds")
+corgi_score3 <- corgi_out[,1:3]/corgi_out[,"num.times.sampled"]
+gene_sets[["CORGI3"]] <- names(sort(corgi_score3[,"principal_curve"]))[1:100]
+
+
+
+vd <- plot_venn_diagram(gene_sets)
+
+
+
+ggsave(filename = "embryo_devel_corgi_venn_diagram.eps",
+       device = "eps", 
+       plot = vd,
+       path = "figures", 
+       width = 8,
+       height = 4.5)
+```
+
+
+
+```{r}
+df <- data.frame(CORGI1 = corgi_score1[,"principal_curve"],
+                 CORGI2 = corgi_score2[,"principal_curve"],
+                 CORGI3 = corgi_score3[,"principal_curve"])
+
+pdf('figures/embryo_devel_corgi_pw_plots.pdf')
+pw_plots <- pairs(df, pch = 16,upper.panel = NULL,gap = 2)
+dev.off()
+
+```
+
+
+```{r}
+library(xtable)
+
+my_table <- list()
+my_table[["All three"]] <- Reduce(intersect, gene_sets)
+my_table[["1 and 2 only"]] <- setdiff(Reduce(intersect, gene_sets[c(1,2)]), my_table[["All three"]])
+my_table[["1 and 3 only"]] <- setdiff(Reduce(intersect, gene_sets[c(1,3)]), my_table[["All three"]])
+my_table[["2 and 3 only"]] <- setdiff(Reduce(intersect, gene_sets[c(2,3)]), my_table[["All three"]])
+my_table[["1 only"]] <- setdiff(gene_sets[[1]], Reduce(union,gene_sets[c(2,3)]))
+my_table[["2 only"]] <- setdiff(gene_sets[[2]], Reduce(union,gene_sets[c(1,3)]))
+my_table[["3 only"]] <- setdiff(gene_sets[[3]], Reduce(union,gene_sets[c(1,2)]))
+
+lapply(my_table, function(x) paste0(x, collapse = "\n")) -> my_table
+
+cat(my_table[["All three"]])
+```

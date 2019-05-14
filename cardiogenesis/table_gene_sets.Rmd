@@ -40,7 +40,6 @@ gene_sets %>%
 
 
 ```{r}
-
 library(dplyr)
 gene_sets %>%
   lapply(function(x) paste0(x, collapse = " ")) %>%

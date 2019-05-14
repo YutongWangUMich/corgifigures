@@ -1,6 +1,7 @@
 ---
 title: "Table of gene sets compared - embyrogenesis"
 output: html_notebook
+description: Supplementary information Section 4.1 
 ---
 
 ```{r}

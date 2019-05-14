@@ -1,6 +1,7 @@
 ---
 title: "Main figure - embryogenesis"
 output: html_notebook
+description: Figure 2
 ---
 
 ```{r}
