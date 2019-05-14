@@ -1,6 +1,7 @@
 ---
 title: "Table of gene sets in the cardiogenesis comparisons"
 output: html_notebook
+description: Supplementary information Section 4.3
 ---
 
 ```{r}

@@ -1,6 +1,7 @@
 ---
 title: "Main figure - neurogenesis"
 output: html_notebook
+description: Figure 3
 ---
 
 ```{r}
